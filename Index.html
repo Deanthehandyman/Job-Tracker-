@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dean's Handyman Service</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { -webkit-tap-highlight-color: transparent; user-select: none; }
+        .view { display: none; padding-bottom: 100px; }
+        .view.active { display: block; }
+        .icon-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        /* Custom scrollbar hide */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans h-screen flex flex-col">
+
+    <!-- MAIN APP CONTAINER -->
+    <div id="app" class="flex-1 overflow-y-auto relative">
+        
+        <!-- DASHBOARD VIEW -->
+        <div id="view-dashboard" class="view active p-4 space-y-6">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <img id="dash-logo" class="w-12 h-12 object-contain bg-white rounded-lg border hidden" />
+                    <div>
+                        <h1 class="text-2xl font-bold">Good Morning</h1>
+                        <p class="text-slate-500" id="date-display">Today</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="nav('customers', true)" class="bg-blue-600 text-white p-4 rounded-xl shadow-md flex flex-col items-center gap-2 active:scale-95 transition">
+                    <i data-lucide="plus" class="w-6 h-6"></i>
+                    <span class="font-bold">New Customer</span>
+                </button>
+                <button onclick="startNewJob()" class="bg-slate-800 text-white p-4 rounded-xl shadow-md flex flex-col items-center gap-2 active:scale-95 transition">
+                    <i data-lucide="calendar" class="w-6 h-6"></i>
+                    <span class="font-bold">Schedule Job</span>
+                </button>
+            </div>
+
+            <div>
+                <h2 class="text-lg font-bold mb-3">Today's Jobs</h2>
+                <div id="dashboard-jobs" class="space-y-3"></div>
+            </div>
+            
+            <div id="unpaid-section" class="hidden">
+                <h2 class="text-lg font-bold mb-3 text-red-600">Unpaid / Active</h2>
+                <div id="dashboard-unpaid" class="space-y-3"></div>
+            </div>
+        </div>
+
+        <!-- CUSTOMERS VIEW -->
+        <div id="view-customers" class="view p-4 space-y-4">
+            <div class="flex justify-between items-center">
+                <h2 class="text-2xl font-bold">Customers</h2>
+                <div class="flex gap-2">
+                    <button onclick="requestInfoText()" class="bg-slate-200 p-2 rounded-full"><i data-lucide="message-square"></i></button>
+                    <button onclick="openModal('modal-customer')" class="bg-blue-600 text-white p-2 rounded-full"><i data-lucide="plus"></i></button>
+                </div>
+            </div>
+            <div id="customer-list" class="space-y-3"></div>
+        </div>
+
+        <!-- SCHEDULE VIEW -->
+        <div id="view-schedule" class="view p-4 space-y-4">
+            <div class="flex justify-between items-center">
+                <h2 class="text-2xl font-bold">Schedule</h2>
+                <button onclick="startNewJob()" class="bg-slate-800 text-white p-2 rounded-full"><i data-lucide="plus"></i></button>
+            </div>
+            <div id="job-list" class="space-y-3"></div>
+        </div>
+
+        <!-- JOB DETAILS / INVOICE VIEW -->
+        <div id="view-invoice" class="view p-4 space-y-6">
+            <div class="flex items-center gap-2">
+                <button onclick="nav('schedule')" class="p-2 rounded-full bg-slate-200"><i data-lucide="arrow-left"></i></button>
+                <h2 class="text-xl font-bold">Job Details</h2>
+            </div>
+
+            <!-- Job Card -->
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <div class="flex justify-center mb-4"><img id="invoice-logo" class="h-16 object-contain hidden" /></div>
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h1 id="inv-title" class="text-2xl font-bold">Job Title</h1>
+                        <p id="inv-customer" class="text-slate-500">Customer Name</p>
+                    </div>
+                    <div id="inv-status" class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">STATUS</div>
+                </div>
+
+                <!-- Timer Box -->
+                <div class="bg-slate-50 p-4 rounded-lg border border-slate-200 mb-4">
+                    <div class="flex justify-between items-center mb-3">
+                        <div class="flex items-center gap-2 text-slate-600">
+                            <i data-lucide="clock"></i>
+                            <span id="timer-display" class="font-mono text-xl font-bold">0h 0m 0s</span>
+                        </div>
+                        <a id="inv-map-link" href="#" target="_blank" class="text-xs text-blue-500 flex gap-1 hidden"><i data-lucide="map"></i> Map</a>
+                    </div>
+                    <div id="timer-controls" class="grid grid-cols-2 gap-2">
+                        <!-- Buttons injected by JS -->
+                    </div>
+                </div>
+
+                <!-- Photos -->
+                <div class="mb-2">
+                    <h3 class="font-bold text-sm text-slate-500 mb-2 flex items-center gap-2"><i data-lucide="camera" class="w-4"></i> Photos</h3>
+                    <div class="flex gap-2 overflow-x-auto pb-2 no-scrollbar" id="photo-list">
+                        <label class="flex-shrink-0 w-20 h-20 bg-slate-100 rounded-lg border-2 border-dashed border-slate-300 flex flex-col items-center justify-center cursor-pointer">
+                            <i data-lucide="plus" class="text-slate-400"></i>
+                            <input type="file" accept="image/*" class="hidden" onchange="uploadPhoto(this)" />
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Invoice Items -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-4 border-b bg-slate-50 flex justify-between items-center">
+                    <h3 class="font-bold" id="inv-number">Invoice #</h3>
+                    <button onclick="toggleEditInvoice()" class="text-blue-600 text-sm font-bold">Edit Items</button>
+                </div>
+                
+                <div id="invoice-items" class="p-4 space-y-2"></div>
+                <div class="p-4 bg-slate-50 border-t flex justify-between items-center text-lg font-bold">
+                    <span>Total</span>
+                    <span id="inv-total">$0.00</span>
+                </div>
+                
+                <div id="action-area" class="p-4 border-t"></div>
+            </div>
+
+            <!-- Payment Area -->
+            <div id="payment-area" class="hidden bg-white rounded-xl shadow-sm border overflow-hidden mt-6">
+                <div class="bg-slate-900 text-white p-4 text-center font-bold flex justify-center gap-2"><i data-lucide="dollar-sign"></i> Collect Payment</div>
+                <div class="p-4 text-center">
+                    <div class="flex gap-2 mb-4 justify-center">
+                        <button onclick="showQR('cashapp')" class="px-3 py-1 bg-slate-200 rounded font-bold">CashApp</button>
+                        <button onclick="showQR('venmo')" class="px-3 py-1 bg-slate-200 rounded font-bold">Venmo</button>
+                        <button onclick="showQR('paypal')" class="px-3 py-1 bg-slate-200 rounded font-bold">PayPal</button>
+                    </div>
+                    <div id="qr-display" class="flex flex-col items-center"></div>
+                    <div class="mt-4 pt-4 border-t">
+                        <button onclick="markPaid()" class="w-full py-3 bg-green-600 text-white rounded-xl font-bold flex justify-center gap-2"><i data-lucide="check-circle"></i> Mark Paid (Cash/Check)</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SETTINGS VIEW -->
+        <div id="view-settings" class="view p-4 space-y-6">
+            <h2 class="text-2xl font-bold">Settings</h2>
+            
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <div class="flex items-center gap-4 mb-4">
+                    <img id="settings-logo-preview" class="w-20 h-20 object-contain bg-slate-100 rounded border" />
+                    <label class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold cursor-pointer">
+                        Upload Logo
+                        <input type="file" accept="image/*" class="hidden" onchange="uploadLogo(this)" />
+                    </label>
+                </div>
+                <div class="space-y-3">
+                    <input id="set-company" class="input-field" placeholder="Company Name" onchange="saveSettings()" />
+                    <input id="set-phone" class="input-field" placeholder="Phone" onchange="saveSettings()" />
+                    <input id="set-rate" type="number" class="input-field" placeholder="Hourly Rate ($)" onchange="saveSettings()" />
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <h3 class="font-bold mb-3">Payment Handles</h3>
+                <div class="space-y-3">
+                    <input id="set-cashapp" class="input-field" placeholder="$Cashtag" onchange="saveSettings()" />
+                    <input id="set-venmo" class="input-field" placeholder="Venmo Handle" onchange="saveSettings()" />
+                    <input id="set-paypal" class="input-field" placeholder="Paypal User" onchange="saveSettings()" />
+                </div>
+            </div>
+            
+            <div class="text-center text-sm text-slate-400 mt-10">Deans Handyman Service App v1.0</div>
+        </div>
+
+    </div>
+
+    <!-- BOTTOM NAV -->
+    <div class="bg-white border-t border-slate-200 pb-safe h-20 flex justify-around items-center shrink-0 z-50">
+        <button onclick="nav('dashboard')" class="icon-btn text-blue-600"><i data-lucide="briefcase"></i><span class="text-[10px] font-bold">Home</span></button>
+        <button onclick="nav('schedule')" class="icon-btn text-slate-400"><i data-lucide="calendar"></i><span class="text-[10px] font-bold">Schedule</span></button>
+        <button onclick="startNewJob()" class="bg-blue-600 text-white p-4 rounded-full shadow-lg -mt-8 border-4 border-slate-50"><i data-lucide="plus"></i></button>
+        <button onclick="nav('customers')" class="icon-btn text-slate-400"><i data-lucide="users"></i><span class="text-[10px] font-bold">Clients</span></button>
+        <button onclick="nav('settings')" class="icon-btn text-slate-400"><i data-lucide="settings"></i><span class="text-[10px] font-bold">Settings</span></button>
+    </div>
+
+    <!-- MODALS -->
+    
+    <!-- Customer Modal -->
+    <div id="modal-customer" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+            <h3 class="text-xl font-bold">New Customer</h3>
+            <input id="new-cust-name" class="input-field" placeholder="Name" />
+            <input id="new-cust-phone" class="input-field" placeholder="Phone" />
+            <input id="new-cust-addr" class="input-field" placeholder="Address" />
+            <div class="flex gap-2">
+                <button onclick="closeModal('modal-customer')" class="flex-1 p-3 font-bold text-slate-500">Cancel</button>
+                <button onclick="saveCustomer()" class="flex-1 p-3 bg-blue-600 text-white rounded-lg font-bold">Save & Start</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Job Modal -->
+    <div id="modal-job" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+            <h3 class="text-xl font-bold">New Job</h3>
+            <select id="new-job-cust" class="input-field"></select>
+            <input id="new-job-title" class="input-field" placeholder="Job Title (e.g. Fan Install)" />
+            <div class="flex gap-2">
+                <input id="new-job-date" type="date" class="input-field flex-1" />
+                <input id="new-job-time" type="time" class="input-field w-32" />
+            </div>
+            <div class="flex gap-2">
+                <button onclick="closeModal('modal-job')" class="flex-1 p-3 font-bold text-slate-500">Cancel</button>
+                <button onclick="saveJob()" class="flex-1 p-3 bg-blue-600 text-white rounded-lg font-bold">Start Job</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- GLOBAL STATE ---
+        let db = {
+            customers: [],
+            jobs: [],
+            settings: {
+                companyName: "Dean's Handyman Service LLC",
+                phone: "281-917-9914",
+                ratePerHour: 85,
+                cashAppTag: "",
+                venmoHandle: "",
+                paypalUser: "",
+                logo: null
+            }
+        };
+        let activeJobId = null;
+        let timerInterval = null;
+
+        // --- INIT ---
+        function init() {
+            const saved = localStorage.getItem('deans_db');
+            if(saved) db = JSON.parse(saved);
+            
+            // Set Inputs
+            document.getElementById('set-company').value = db.settings.companyName || '';
+            document.getElementById('set-phone').value = db.settings.phone || '';
+            document.getElementById('set-rate').value = db.settings.ratePerHour || '';
+            document.getElementById('set-cashapp').value = db.settings.cashAppTag || '';
+            document.getElementById('set-venmo').value = db.settings.venmoHandle || '';
+            document.getElementById('set-paypal').value = db.settings.paypalUser || '';
+            if(db.settings.logo) document.getElementById('settings-logo-preview').src = db.settings.logo;
+
+            document.getElementById('date-display').innerText = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+            
+            lucide.createIcons();
+            renderDashboard();
+        }
+
+        function saveDB() {
+            localStorage.setItem('deans_db', JSON.stringify(db));
+        }
+
+        // --- NAVIGATION ---
+        function nav(viewName, isSubNav) {
+            document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+            document.getElementById(`view-${viewName}`).classList.add('active');
+            
+            // Update Tab Bar Styles
+            document.querySelectorAll('.icon-btn').forEach(btn => {
+                btn.classList.remove('text-blue-600');
+                btn.classList.add('text-slate-400');
+            });
+            // Try to highlight nav button
+            const navBtn = document.querySelector(`button[onclick="nav('${viewName}')"]`);
+            if(navBtn) {
+                navBtn.classList.add('text-blue-600');
+                navBtn.classList.remove('text-slate-400');
+            }
+
+            if(viewName === 'dashboard') renderDashboard();
+            if(viewName === 'customers') renderCustomers();
+            if(viewName === 'schedule') renderSchedule();
+            if(viewName === 'invoice') renderInvoice();
+        }
+
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        // --- SETTINGS ---
+        function saveSettings() {
+            db.settings.companyName = document.getElementById('set-company').value;
+            db.settings.phone = document.getElementById('set-phone').value;
+            db.settings.ratePerHour = document.getElementById('set-rate').value;
+            db.settings.cashAppTag = document.getElementById('set-cashapp').value;
+            db.settings.venmoHandle = document.getElementById('set-venmo').value;
+            db.settings.paypalUser = document.getElementById('set-paypal').value;
+            saveDB();
+        }
+
+        function uploadLogo(input) {
+            const file = input.files[0];
+            if(file) {
+                const reader = new FileReader();
+                reader.onloadend = function() {
+                    db.settings.logo = reader.result;
+                    document.getElementById('settings-logo-preview').src = reader.result;
+                    saveDB();
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // --- CUSTOMERS ---
+        function renderCustomers() {
+            const list = document.getElementById('customer-list');
+            list.innerHTML = '';
+            db.customers.forEach(c => {
+                list.innerHTML += `
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center">
+                        <div>
+                            <h3 class="font-bold text-lg">${c.name}</h3>
+                            <div class="text-sm text-slate-500">${c.phone}</div>
+                        </div>
+                        <button onclick="deleteCustomer('${c.id}')" class="text-slate-300"><i data-lucide="trash-2"></i></button>
+                    </div>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        function saveCustomer() {
+            const name = document.getElementById('new-cust-name').value;
+            if(!name) return;
+            const id = Date.now().toString();
+            db.customers.push({
+                id: id,
+                name: name,
+                phone: document.getElementById('new-cust-phone').value,
+                address: document.getElementById('new-cust-addr').value
+            });
+            saveDB();
+            closeModal('modal-customer');
+            
+            // Auto-Flow: Start Job
+            document.getElementById('new-cust-name').value = '';
+            startNewJob(id); 
+        }
+
+        function deleteCustomer(id) {
+            if(confirm("Delete customer?")) {
+                db.customers = db.customers.filter(c => c.id !== id);
+                saveDB();
+                renderCustomers();
+            }
+        }
+
+        function requestInfoText() {
+            const text = `Hi, this is ${db.settings.companyName}. Please reply with your:\n1. Full Name\n2. Address\n3. Email\n\nSo I can get you set up in my system. Thanks!`;
+            window.location.href = `sms:?body=${encodeURIComponent(text)}`;
+        }
+
+        // --- JOBS ---
+        function startNewJob(preSelectCustId = null) {
+            // Populate Customer Select
+            const select = document.getElementById('new-job-cust');
+            select.innerHTML = '<option value="">Select Customer</option>';
+            db.customers.forEach(c => {
+                select.innerHTML += `<option value="${c.id}" ${c.id === preSelectCustId ? 'selected' : ''}>${c.name}</option>`;
+            });
+            
+            // Set defaults
+            document.getElementById('new-job-title').value = '';
+            document.getElementById('new-job-date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('new-job-time').value = '08:00';
+            
+            openModal('modal-job');
+        }
+
+        function saveJob() {
+            const custId = document.getElementById('new-job-cust').value;
+            const title = document.getElementById('new-job-title').value;
+            if(!custId || !title) return;
+
+            const newJob = {
+                id: Date.now().toString(),
+                customerId: custId,
+                title: title,
+                date: document.getElementById('new-job-date').value,
+                time: document.getElementById('new-job-time').value,
+                status: 'Scheduled',
+                invoiceNumber: 'INV-' + Math.floor(1000 + Math.random() * 9000),
+                lineItems: [],
+                photos: [],
+                timerStart: null,
+                loggedTime: 0,
+                locationUrl: null
+            };
+            db.jobs.push(newJob);
+            saveDB();
+            closeModal('modal-job');
+            
+            // Auto-Flow
+            activeJobId = newJob.id;
+            nav('invoice');
+        }
+
+        function renderDashboard() {
+            const list = document.getElementById('dashboard-jobs');
+            const unpaidList = document.getElementById('dashboard-unpaid');
+            const logo = document.getElementById('dash-logo');
+            
+            if(db.settings.logo) { logo.src = db.settings.logo; logo.classList.remove('hidden'); }
+            
+            list.innerHTML = '';
+            unpaidList.innerHTML = '';
+            
+            const today = new Date().toISOString().split('T')[0];
+            const todaysJobs = db.jobs.filter(j => j.date === today);
+            
+            if(todaysJobs.length === 0) list.innerHTML = '<div class="text-slate-400 text-center p-4 bg-white rounded-xl border">No jobs today</div>';
+            
+            todaysJobs.forEach(job => {
+                const cust = db.customers.find(c => c.id === job.customerId);
+                list.innerHTML += `
+                    <div onclick="openJob('${job.id}')" class="bg-white p-4 rounded-xl shadow-sm border flex justify-between items-center">
+                        <div>
+                            <h3 class="font-bold">${job.title}</h3>
+                            <p class="text-sm text-slate-500">${cust ? cust.name : 'Unknown'}</p>
+                        </div>
+                        <i data-lucide="chevron-right" class="text-slate-400"></i>
+                    </div>
+                `;
+            });
+
+            // Unpaid logic
+            const unpaid = db.jobs.filter(j => (j.status === 'Completed' || j.status === 'In Progress') && getJobTotal(j) > 0);
+            if(unpaid.length > 0) {
+                document.getElementById('unpaid-section').classList.remove('hidden');
+                unpaid.forEach(job => {
+                    unpaidList.innerHTML += `
+                        <div onclick="openJob('${job.id}')" class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-green-500 flex justify-between items-center">
+                            <h3 class="font-bold">${job.title}</h3>
+                            <span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">$${getJobTotal(job)}</span>
+                        </div>
+                    `;
+                });
+            } else {
+                document.getElementById('unpaid-section').classList.add('hidden');
+            }
+            lucide.createIcons();
+        }
+
+        function renderSchedule() {
+            const list = document.getElementById('job-list');
+            list.innerHTML = '';
+            // Sort by date
+            const sorted = [...db.jobs].sort((a,b) => new Date(a.date) - new Date(b.date));
+            sorted.forEach(job => {
+                const cust = db.customers.find(c => c.id === job.customerId);
+                list.innerHTML += `
+                    <div onclick="openJob('${job.id}')" class="bg-white p-4 rounded-xl shadow-sm border">
+                        <div class="text-xs font-bold text-blue-600 mb-1">${job.date} @ ${job.time}</div>
+                        <h3 class="font-bold text-lg">${job.title}</h3>
+                        <div class="flex justify-between mt-1">
+                            <span class="text-slate-500">${cust ? cust.name : ''}</span>
+                            <span class="text-xs bg-slate-100 px-2 py-1 rounded border">${job.status}</span>
+                        </div>
+                    </div>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        function openJob(id) {
+            activeJobId = id;
+            nav('invoice');
+        }
+
+        // --- INVOICE LOGIC ---
+        function getJobTotal(job) {
+            if(!job.lineItems) return 0;
+            return job.lineItems.reduce((sum, item) => sum + (parseFloat(item.price || 0) * parseFloat(item.qty || 1)), 0);
+        }
+
+        function renderInvoice() {
+            const job = db.jobs.find(j => j.id === activeJobId);
+            if(!job) return;
+            const cust = db.customers.find(c => c.id === job.customerId);
+
+            // Populate Info
+            document.getElementById('inv-title').innerText = job.title;
+            document.getElementById('inv-customer').innerText = cust ? cust.name : '';
+            document.getElementById('inv-status').innerText = job.status;
+            document.getElementById('inv-number').innerText = `Invoice #${job.invoiceNumber}`;
+            
+            const logo = document.getElementById('invoice-logo');
+            if(db.settings.logo) { logo.src = db.settings.logo; logo.classList.remove('hidden'); }
+            
+            if(job.locationUrl) {
+                const mapLink = document.getElementById('inv-map-link');
+                mapLink.href = job.locationUrl;
+                mapLink.classList.remove('hidden');
+            }
+
+            // Photos
+            const photoList = document.getElementById('photo-list');
+            // Keep the add button, remove old imgs
+            const addBtn = photoList.firstElementChild; 
+            photoList.innerHTML = ''; 
+            photoList.appendChild(addBtn);
+            if(job.photos) {
+                job.photos.forEach(src => {
+                    const img = document.createElement('img');
+                    img.src = src;
+                    img.className = "w-20 h-20 rounded-lg object-cover border flex-shrink-0";
+                    photoList.appendChild(img);
+                });
+            }
+
+            // Timer UI
+            const controls = document.getElementById('timer-controls');
+            if(job.status === 'In Progress' && job.timerStart) {
+                // Running
+                startTimerInterval(job);
+                controls.innerHTML = `<button onclick="clockOut()" class="bg-red-600 text-white p-3 rounded-lg font-bold col-span-2 flex justify-center gap-2"><i data-lucide="square"></i> STOP & CALCULATE</button>`;
+            } else {
+                // Stopped
+                clearInterval(timerInterval);
+                document.getElementById('timer-display').innerText = formatMs(job.loggedTime || 0);
+                
+                if(job.status !== 'Completed' && job.status !== 'Paid') {
+                    controls.innerHTML = `
+                        <button onclick="clockIn()" class="bg-green-600 text-white p-3 rounded-lg font-bold flex justify-center gap-2"><i data-lucide="play"></i> START</button>
+                        <button onclick="markComplete()" class="bg-slate-800 text-white p-3 rounded-lg font-bold flex justify-center gap-2"><i data-lucide="check-circle"></i> DONE</button>
+                    `;
+                } else {
+                    controls.innerHTML = `<div class="col-span-2 text-center text-slate-400 font-bold bg-slate-100 p-2 rounded">Job Finished</div>`;
+                }
+            }
+
+            // Line Items
+            renderLineItems(job);
+
+            // Bottom Actions
+            const actionArea = document.getElementById('action-area');
+            const total = getJobTotal(job);
+            
+            if(job.status === 'Completed' && total > 0) {
+                actionArea.innerHTML = `<button onclick="sendInvoiceText()" class="w-full py-3 bg-blue-600 text-white rounded-xl font-bold flex justify-center gap-2"><i data-lucide="share"></i> Send Invoice</button>`;
+                document.getElementById('payment-area').classList.remove('hidden');
+            } else if (job.status === 'Paid') {
+                actionArea.innerHTML = `<div class="text-green-600 font-bold text-center flex justify-center gap-2"><i data-lucide="check"></i> PAID IN FULL</div>`;
+                document.getElementById('payment-area').classList.add('hidden');
+                // Receipt Button logic could go here
+            } else {
+                actionArea.innerHTML = '';
+                document.getElementById('payment-area').classList.add('hidden');
+            }
+
+            lucide.createIcons();
+        }
+
+        // --- TIMER FUNCTIONS ---
+        function startTimerInterval(job) {
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                const now = Date.now();
+                const session = now - job.timerStart;
+                const total = (job.loggedTime || 0) + session;
+                document.getElementById('timer-display').innerText = formatMs(total);
+            }, 1000);
+        }
+
+        function formatMs(ms) {
+            const s = Math.floor((ms / 1000) % 60);
+            const m = Math.floor((ms / (1000 * 60)) % 60);
+            const h = Math.floor((ms / (1000 * 60 * 60)));
+            return `${h}h ${m}m ${s}s`;
+        }
+
+        function clockIn() {
+            const job = db.jobs.find(j => j.id === activeJobId);
+            job.status = 'In Progress';
+            job.timerStart = Date.now();
+            
+            // GPS Capture
+            if("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(pos => {
+                    job.locationUrl = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+                    saveDB();
+                    renderInvoice(); // Re-render to show map link
+                });
+            }
+            
+            saveDB();
+            renderInvoice();
+        }
+
+        function clockOut() {
+            const job = db.jobs.find(j => j.id === activeJobId);
+            const now = Date.now();
+            const session = now - job.timerStart;
+            const totalMs = (job.loggedTime || 0) + session;
+            
+            job.status = 'In Progress';
+            job.timerStart = null;
+            job.loggedTime = totalMs;
+
+            // Calc Labor
+            const hours = totalMs / (1000 * 60 * 60);
+            const rate = parseFloat(db.settings.ratePerHour);
+            const cost = (hours * rate).toFixed(2);
+
+            // Add/Update Labor Item
+            let found = false;
+            job.lineItems.forEach(item => {
+                if(item.desc === 'Labor (Tracked)') {
+                    item.price = cost;
+                    found = true;
+                }
+            });
+            if(!found) job.lineItems.push({desc: 'Labor (Tracked)', price: cost, qty: 1});
+
+            saveDB();
+            renderInvoice();
+        }
+
+        function markComplete() {
+            const job = db.jobs.find(j => j.id === activeJobId);
+            job.status = 'Completed';
+            saveDB();
+            renderInvoice();
+        }
+
+        function markPaid() {
+            const job = db.jobs.find(j => j.id === activeJobId);
+            job.status = 'Paid';
+            saveDB();
+            renderInvoice();
+            
+            // Send Receipt Prompt
+            if(confirm("Send Receipt Text?")) {
+                const total = getJobTotal(job);
+                const text = `RECEIPT: Invoice #${job.invoiceNumber} paid in full ($${total}). Thank you for your business! - ${db.settings.companyName}`;
+                window.location.href = `sms:?body=${encodeURIComponent(text)}`;
+            }
+        }
+
+        // --- LINE ITEMS ---
+        function renderLineItems(job) {
+            const container = document.getElementById('invoice-items');
+            container.innerHTML = '';
+            job.lineItems.forEach((item, idx) => {
+                container.innerHTML += `
+                    <div class="flex justify-between border-b border-slate-100 pb-2 mb-2">
+                        <div class="text-sm font-medium">${item.desc} (x${item.qty})</div>
+                        <div class="font-bold">$${(item.price * item.qty).toFixed(2)}</div>
+                    </div>
+                `;
+            });
+            document.getElementById('inv-total').innerText = '$' + getJobTotal(job).toFixed(2);
+        }
+
+        function toggleEditInvoice() {
+            const desc = prompt("Item Description:");
+            if(desc) {
+                const price = prompt("Price:");
+                const job = db.jobs.find(j => j.id === activeJobId);
+                job.lineItems.push({desc, price, qty: 1});
+                saveDB();
+                renderInvoice();
+            }
+        }
+
+        // --- PAYMENT & SHARING ---
+        function sendInvoiceText() {
+            const job = db.jobs.find(j => j.id === activeJobId);
+            const total = getJobTotal(job).toFixed(2);
+            let text = `INVOICE from ${db.settings.companyName}\nTotal Due: $${total}\n\n`;
+            
+            if(db.settings.cashAppTag) text += `CashApp: https://cash.app/$${db.settings.cashAppTag}/${total}\n`;
+            if(db.settings.venmoHandle) text += `Venmo: https://venmo.com/${db.settings.venmoHandle}?txn=charge&amount=${total}\n`;
+            
+            window.location.href = `sms:?body=${encodeURIComponent(text)}`;
+        }
+
+        function showQR(type) {
+            const job = db.jobs.find(j => j.id === activeJobId);
+            const total = getJobTotal(job).toFixed(2);
+            let url = '';
+            
+            if(type === 'cashapp') url = `https://cash.app/$${db.settings.cashAppTag}/${total}`;
+            if(type === 'venmo') url = `https://venmo.com/${db.settings.venmoHandle}`;
+            if(type === 'paypal') url = `https://paypal.me/${db.settings.paypalUser}/${total}`;
+
+            const display = document.getElementById('qr-display');
+            display.innerHTML = `
+                <div class="bg-white p-4 border rounded shadow mt-4">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}" />
+                    <p class="text-center font-bold mt-2 capitalize">${type}</p>
+                </div>
+            `;
+        }
+
+        function uploadPhoto(input) {
+            const file = input.files[0];
+            if(file) {
+                const reader = new FileReader();
+                reader.onloadend = function() {
+                    const job = db.jobs.find(j => j.id === activeJobId);
+                    if(!job.photos) job.photos = [];
+                    job.photos.push(reader.result);
+                    saveDB();
+                    renderInvoice();
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // --- STYLE CLASSES ---
+        const style = document.createElement('style');
+        style.textContent = `
+            .input-field { width: 100%; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 8px; }
+        `;
+        document.head.appendChild(style);
+
+        // Start App
+        init();
+
+    </script>
+</body>
+</html>
+
+
